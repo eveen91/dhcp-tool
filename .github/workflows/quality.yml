@@ -1,0 +1,35 @@
+name: Quality
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  quality:
+    # Dedicated Debian 13 runner matching T00.8; no Docker required.
+    runs-on: [self-hosted, linux, dhcp-tool]
+    env:
+      POSTGRES_DB: test_dhcp_tool
+      POSTGRES_TEST_DB: test_dhcp_tool
+      POSTGRES_USER: dhcp_tool_test
+      POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: '5432'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install locked backend dependencies
+        working-directory: backend
+        run: uv sync --locked --extra dev
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Prepare separate test configuration
+        working-directory: backend
+        run: |
+          printf '%s\n' 'DJANGO_SETTINGS_MODULE=config.settings.test' 'DJANGO_SECRET_KEY=ci-only-not-for-production' > .env.test
+          chmod 600 .env.test
+      - name: Install headless browser
+        working-directory: frontend
+        run: npx playwright install chromium
+      - name: Check quality
+        run: scripts/check-quality.sh

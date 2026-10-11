@@ -1,0 +1,7315 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gaia DHCP Tool API",
+    "version": "1.0.0",
+    "description": "Implemented endpoints only. Planned resources are documented in docs/api-contract.md."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/health/": {
+      "get": {
+        "operationId": "getHealth",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Process available; not a database or Gaia readiness check.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed"
+          }
+        }
+      }
+    },
+    "/api/v1/schema/": {
+      "get": {
+        "operationId": "getSchema",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/session/": {
+      "get": {
+        "operationId": "getSession",
+        "security": [],
+        "description": "Anonymous bootstrap returns user=null and a CSRF token. Authenticated sessions include only own identity and role.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "loginSession",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get the token from GET auth/session; login rotates it."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON or parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authentication, authorization or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic error without debug details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Login attempt limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds until retry."
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "logoutSession",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Get the token from GET auth/session; login rotates it."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session invalidated"
+          },
+          "403": {
+            "description": "Authentication, authorization or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/": {
+      "get": {
+        "operationId": "listFirewalls",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "-name",
+                "created_at",
+                "-created_at"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirewallPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON or parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authentication, authorization or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic error without debug details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createFirewall",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Firewall"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirewallCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/": {
+      "get": {
+        "operationId": "getFirewall",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Firewall"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON or parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authentication, authorization or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic error without debug details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateFirewall",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Firewall"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirewallPatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/draft/": {
+      "get": {
+        "operationId": "getDraft",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateGlobalSettings",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSettings"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalSettings"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/subnets/": {
+      "get": {
+        "operationId": "listSubnets",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "-name",
+                "created_at",
+                "-created_at"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubnetPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSubnet",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subnet"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubnetCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/subnets/{subnet_id}/": {
+      "get": {
+        "operationId": "getSubnet",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubnetDetail"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSubnet",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubnetDetail"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubnetPatch"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteSubnet",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Successful operation",
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/subnets/{subnet_id}/pool/": {
+      "get": {
+        "operationId": "getPool",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pool"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "replacePool",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pool"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePool",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Successful operation",
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/reservations/": {
+      "get": {
+        "operationId": "listReservations",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "subnet_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "-name",
+                "created_at",
+                "-created_at",
+                "ip",
+                "-ip",
+                "mac",
+                "-mac"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createReservation",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/reservations/{reservation_id}/": {
+      "get": {
+        "operationId": "getReservation",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reservation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateReservation",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reservation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationPatch"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteReservation",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reservation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Successful operation",
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/validation/": {
+      "post": {
+        "operationId": "validateDraft",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/APIError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailure"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationReport"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Parser failure or timeout; no preview content returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationFailure"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationRequest"
+              }
+            }
+          }
+        },
+        "description": "Readonly operation for all assigned roles, including archived firewalls. Requires the captured draft revision and CSRF. Never stores versions, artifacts or audit entries; Gaia compatibility remains unverified."
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/preview/": {
+      "post": {
+        "operationId": "previewDraft",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/APIError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailure"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Parser failure or timeout; no preview content returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationFailure"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationRequest"
+              }
+            }
+          }
+        },
+        "description": "Readonly operation for all assigned roles, including archived firewalls. Requires the captured draft revision and CSRF. Never stores versions, artifacts or audit entries; Gaia compatibility remains unverified."
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/versions/": {
+      "get": {
+        "operationId": "listVersions",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordering",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "number",
+                "-number",
+                "created_at",
+                "-created_at"
+              ],
+              "default": "-number"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "publishVersion",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Version"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Parser failure or timeout; publication not stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/versions/{version_id}/": {
+      "get": {
+        "operationId": "getVersion",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/versions/{version_id}/artifact/": {
+      "get": {
+        "operationId": "downloadArtifact",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-SHA256": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Version-ID": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "X-Version-Number": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/versions/{version_id}/restore/": {
+      "post": {
+        "operationId": "restoreVersion",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            },
+            "headers": {
+              "X-Config-Revision": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/diff/": {
+      "get": {
+        "operationId": "compareVersions",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Omit to use latest manually declared successful deployment."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionDiff"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/deployments/": {
+      "get": {
+        "operationId": "listDeployments",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Manual ledger ordered by event time, entry time and UUID descending.",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "planned",
+                "successful",
+                "failed",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "version_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDeployment",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Operator/admin only. Authenticated user and server entry time are recorded. A supplied hash is manually provided; comparison never verifies the appliance. No configuration revision change.",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploymentCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/deployments/{deployment_id}/": {
+      "get": {
+        "operationId": "getDeployment",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "correctDeployment",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Operator/admin only. At least one declaration field, current expected_revision and nonblank reason required. Original operator/entry time preserved. Before/after and correction actor recorded atomically in audit. No DELETE.",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploymentCorrection"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/deployments/latest/": {
+      "get": {
+        "operationId": "getLatestDeployment",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Latest manually declared successful event by occurred_at, created_at, UUID descending. Backdated entries allowed; failed/cancelled/planned and downloads never select a baseline.",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestDeployment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/audit/": {
+      "get": {
+        "operationId": "listAuditEvents",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Read-only history for a firewall visible to the current user. Snapshot data is retrieved separately in detail.",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "operation",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "object_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/audit/{audit_id}/": {
+      "get": {
+        "operationId": "getAuditEvent",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Read-only before/after history constrained to the selected firewall.",
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "audit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid fields or revision header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or archived firewall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backups/latest/download/": {
+      "get": {
+        "operationId": "downloadLatestBackup",
+        "summary": "Download the latest root-published encrypted export (administrator only).",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encrypted GPG archive; encryption key is never included.",
+            "headers": {
+              "X-Backup-SHA256": {
+                "description": "SHA-256 of the encrypted file verified when published.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Query parameters are refused."
+          },
+          "403": {
+            "description": "An active administrator session is required."
+          },
+          "404": {
+            "description": "No valid published export is available."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/csv/export/": {
+      "get": {
+        "operationId": "exportReservationCSV",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped CSV export, signed preview without writes, or atomic audited draft import. No publication or deployment.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid CSV or preview; deletion confirmation required."
+          },
+          "403": {
+            "description": "Authentication, capability or CSRF check failed."
+          },
+          "404": {
+            "description": "Firewall not accessible."
+          },
+          "409": {
+            "description": "Archived firewall or stale revision."
+          },
+          "413": {
+            "description": "Request or CSV limit exceeded."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/csv/preview/": {
+      "post": {
+        "operationId": "previewReservationCSV",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped CSV export, signed preview without writes, or atomic audited draft import. No publication or deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CSVPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid CSV or preview; deletion confirmation required."
+          },
+          "403": {
+            "description": "Authentication, capability or CSRF check failed."
+          },
+          "404": {
+            "description": "Firewall not accessible."
+          },
+          "409": {
+            "description": "Archived firewall or stale revision."
+          },
+          "413": {
+            "description": "Request or CSV limit exceeded."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "csv"
+                ],
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "description": "UTF-8 CSV: maximum 32 KiB and 500 records."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/csv/apply/": {
+      "post": {
+        "operationId": "applyReservationCSV",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped CSV export, signed preview without writes, or atomic audited draft import. No publication or deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid CSV or preview; deletion confirmation required."
+          },
+          "403": {
+            "description": "Authentication, capability or CSRF check failed."
+          },
+          "404": {
+            "description": "Firewall not accessible."
+          },
+          "409": {
+            "description": "Archived firewall or stale revision."
+          },
+          "413": {
+            "description": "Request or CSV limit exceeded."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "confirm_deletions": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/csv/config/export/": {
+      "get": {
+        "operationId": "exportReservationCSVConfiguration",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped CSV export, signed preview without writes, or atomic audited draft import. No publication or deployment.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid CSV or preview; deletion confirmation required."
+          },
+          "403": {
+            "description": "Authentication, capability or CSRF check failed."
+          },
+          "404": {
+            "description": "Firewall not accessible."
+          },
+          "409": {
+            "description": "Archived firewall or stale revision."
+          },
+          "413": {
+            "description": "Request or CSV limit exceeded."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/csv/config/preview/": {
+      "post": {
+        "operationId": "previewReservationCSVConfiguration",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped CSV export, signed preview without writes, or atomic audited draft import. No publication or deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CSVPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid CSV or preview; deletion confirmation required."
+          },
+          "403": {
+            "description": "Authentication, capability or CSRF check failed."
+          },
+          "404": {
+            "description": "Firewall not accessible."
+          },
+          "409": {
+            "description": "Archived firewall or stale revision."
+          },
+          "413": {
+            "description": "Request or CSV limit exceeded."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "csv"
+                ],
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "description": "UTF-8 CSV: maximum 32 KiB and 500 records."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/firewalls/{firewall_id}/csv/config/apply/": {
+      "post": {
+        "operationId": "applyReservationCSVConfiguration",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "firewall_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Config-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped CSV export, signed preview without writes, or atomic audited draft import. No publication or deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid CSV or preview; deletion confirmation required."
+          },
+          "403": {
+            "description": "Authentication, capability or CSRF check failed."
+          },
+          "404": {
+            "description": "Firewall not accessible."
+          },
+          "409": {
+            "description": "Archived firewall or stale revision."
+          },
+          "413": {
+            "description": "Request or CSV limit exceeded."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "confirm_deletions": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "username",
+          "role"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "reader",
+              "editor",
+              "operator",
+              "admin",
+              null
+            ]
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user",
+          "csrf_token"
+        ],
+        "properties": {
+          "user": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ],
+            "nullable": true
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        }
+      },
+      "Login": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        }
+      },
+      "APIError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "fields"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "current_revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      },
+      "Firewall": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "profile",
+          "archived",
+          "created_at",
+          "description",
+          "location",
+          "management_address"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 63
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "R81.10",
+              "R82.10"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "management_address": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          }
+        }
+      },
+      "FirewallPage": {
+        "type": "object",
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Firewall"
+            }
+          }
+        }
+      },
+      "FirewallCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,62}$"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "R81.10",
+              "R82.10"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "management_address": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          }
+        },
+        "required": [
+          "name",
+          "profile"
+        ]
+      },
+      "FirewallPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,62}$"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "R81.10",
+              "R82.10"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "management_address": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          }
+        },
+        "required": []
+      },
+      "GlobalSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "default_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "max_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "domain": {
+            "type": "string",
+            "maxLength": 253,
+            "nullable": true
+          },
+          "dns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "nullable": true
+          }
+        },
+        "required": []
+      },
+      "SubnetCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "cidr": {
+            "type": "string",
+            "maxLength": 18
+          },
+          "interface": {
+            "type": "string",
+            "maxLength": 63
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "default_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "max_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "domain": {
+            "type": "string",
+            "maxLength": 253,
+            "nullable": true
+          },
+          "dns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "nullable": true
+          },
+          "gateway": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          },
+          "interface_address": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "ipv4"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "ipv4"
+                },
+                "minItems": 1,
+                "maxItems": 64,
+                "uniqueItems": true
+              }
+            ],
+            "nullable": true,
+            "description": "Protected subnet interface IPv4 addresses; a single string remains supported for historical configurations."
+          },
+          "gaia_host_name_fallback": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "required": [
+          "name",
+          "cidr"
+        ]
+      },
+      "SubnetPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "cidr": {
+            "type": "string",
+            "maxLength": 18
+          },
+          "interface": {
+            "type": "string",
+            "maxLength": 63
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "default_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "max_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "domain": {
+            "type": "string",
+            "maxLength": 253,
+            "nullable": true
+          },
+          "dns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "nullable": true
+          },
+          "gateway": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          },
+          "interface_address": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "ipv4"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "ipv4"
+                },
+                "minItems": 1,
+                "maxItems": 64,
+                "uniqueItems": true
+              }
+            ],
+            "nullable": true,
+            "description": "Protected subnet interface IPv4 addresses; a single string remains supported for historical configurations."
+          },
+          "gaia_host_name_fallback": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "required": []
+      },
+      "Subnet": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "cidr": {
+            "type": "string",
+            "maxLength": 18
+          },
+          "interface": {
+            "type": "string",
+            "maxLength": 63
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "default_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "max_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "domain": {
+            "type": "string",
+            "maxLength": 253,
+            "nullable": true
+          },
+          "dns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "nullable": true
+          },
+          "gateway": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          },
+          "interface_address": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "ipv4"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "ipv4"
+                },
+                "minItems": 1,
+                "maxItems": 64,
+                "uniqueItems": true
+              }
+            ],
+            "nullable": true,
+            "description": "Protected subnet interface IPv4 addresses; a single string remains supported for historical configurations."
+          },
+          "gaia_host_name_fallback": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "name",
+          "cidr",
+          "interface",
+          "description",
+          "active"
+        ]
+      },
+      "PoolInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "end": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ]
+      },
+      "Pool": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "end": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "start",
+          "end",
+          "description",
+          "active"
+        ]
+      },
+      "ReservationCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "subnet_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,62}$"
+          },
+          "ip": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "mac": {
+            "type": "string",
+            "maxLength": 17
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subnet_id",
+          "name",
+          "ip",
+          "mac"
+        ]
+      },
+      "ReservationPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "subnet_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,62}$"
+          },
+          "ip": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "mac": {
+            "type": "string",
+            "maxLength": 17
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "Reservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subnet_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,62}$"
+          },
+          "ip": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "mac": {
+            "type": "string",
+            "maxLength": 17
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "subnet_id",
+          "name",
+          "ip",
+          "mac",
+          "description",
+          "active"
+        ]
+      },
+      "SubnetDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "cidr": {
+            "type": "string",
+            "maxLength": 18
+          },
+          "interface": {
+            "type": "string",
+            "maxLength": 63
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "default_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "max_lease_time": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "nullable": true
+          },
+          "domain": {
+            "type": "string",
+            "maxLength": 253,
+            "nullable": true
+          },
+          "dns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "nullable": true
+          },
+          "gateway": {
+            "type": "string",
+            "format": "ipv4",
+            "nullable": true
+          },
+          "interface_address": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "ipv4"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "ipv4"
+                },
+                "minItems": 1,
+                "maxItems": 64,
+                "uniqueItems": true
+              }
+            ],
+            "nullable": true,
+            "description": "Protected subnet interface IPv4 addresses; a single string remains supported for historical configurations."
+          },
+          "gaia_host_name_fallback": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "pool": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Pool"
+              }
+            ],
+            "nullable": true
+          },
+          "reservations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reservation"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "name",
+          "cidr",
+          "interface",
+          "description",
+          "active",
+          "pool",
+          "reservations"
+        ]
+      },
+      "Draft": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "firewall_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "base_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "settings": {
+            "$ref": "#/components/schemas/GlobalSettings"
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubnetDetail"
+            }
+          }
+        },
+        "required": [
+          "firewall_id",
+          "revision",
+          "base_version_id",
+          "settings",
+          "subnets"
+        ]
+      },
+      "SubnetPage": {
+        "type": "object",
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subnet"
+            }
+          }
+        }
+      },
+      "ReservationPage": {
+        "type": "object",
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reservation"
+            }
+          }
+        }
+      },
+      "ValidationReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "data_validated",
+          "syntax_status",
+          "parser_version",
+          "parser_return_code",
+          "gaia_compatibility",
+          "artifact_bytes",
+          "sha256"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "data_validated": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "syntax_status": {
+            "type": "string",
+            "enum": [
+              "syntax_checked",
+              "parser_unavailable",
+              "syntax_error",
+              "parser_error",
+              "parser_timeout"
+            ]
+          },
+          "parser_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "parser_return_code": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gaia_compatibility": {
+            "type": "string",
+            "enum": [
+              "unverified"
+            ]
+          },
+          "artifact_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "Preview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "data_validated",
+          "syntax_status",
+          "parser_version",
+          "parser_return_code",
+          "gaia_compatibility",
+          "artifact_bytes",
+          "sha256",
+          "content"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "data_validated": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "syntax_status": {
+            "type": "string",
+            "enum": [
+              "syntax_checked",
+              "parser_unavailable",
+              "syntax_error",
+              "parser_error",
+              "parser_timeout"
+            ]
+          },
+          "parser_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "parser_return_code": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gaia_compatibility": {
+            "type": "string",
+            "enum": [
+              "unverified"
+            ]
+          },
+          "artifact_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "content": {
+            "type": "string",
+            "description": "Exact complete generated ASCII text with LF. Not a stored or published version."
+          }
+        }
+      },
+      "ValidationFailure": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "data_validated",
+          "syntax_status",
+          "parser_version",
+          "parser_return_code",
+          "gaia_compatibility",
+          "artifact_bytes",
+          "sha256",
+          "error"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "data_validated": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "syntax_status": {
+            "type": "string",
+            "enum": [
+              "syntax_checked",
+              "parser_unavailable",
+              "syntax_error",
+              "parser_error",
+              "parser_timeout"
+            ]
+          },
+          "parser_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "parser_return_code": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gaia_compatibility": {
+            "type": "string",
+            "enum": [
+              "unverified"
+            ]
+          },
+          "artifact_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "fields"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "current_revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      },
+      "ValidationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "PublishRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "HistoryAuthor": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "PublishedSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "firewall_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "base_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "settings": {
+            "$ref": "#/components/schemas/GlobalSettings"
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubnetDetail"
+            }
+          },
+          "firewall": {
+            "$ref": "#/components/schemas/Firewall"
+          },
+          "author": {
+            "$ref": "#/components/schemas/HistoryAuthor"
+          }
+        },
+        "required": [
+          "firewall_id",
+          "revision",
+          "base_version_id",
+          "settings",
+          "subnets",
+          "firewall",
+          "author"
+        ]
+      },
+      "StoredValidation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "data_validated",
+          "syntax_status",
+          "parser_version",
+          "parser_return_code",
+          "gaia_compatibility",
+          "artifact_bytes",
+          "sha256",
+          "environment"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "data_validated": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "syntax_status": {
+            "type": "string",
+            "enum": [
+              "syntax_checked",
+              "parser_unavailable",
+              "syntax_error",
+              "parser_error",
+              "parser_timeout"
+            ]
+          },
+          "parser_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "parser_return_code": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gaia_compatibility": {
+            "type": "string",
+            "enum": [
+              "unverified"
+            ]
+          },
+          "artifact_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "environment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "python",
+              "system"
+            ],
+            "properties": {
+              "python": {
+                "type": "string"
+              },
+              "system": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Version": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "firewall_id",
+          "number",
+          "author",
+          "created_at",
+          "description",
+          "profile",
+          "generator_version",
+          "firewall_name",
+          "revision",
+          "sha256",
+          "artifact_bytes",
+          "validation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "firewall_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "author": {
+            "$ref": "#/components/schemas/HistoryAuthor"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "R81.10",
+              "R82.10"
+            ]
+          },
+          "generator_version": {
+            "type": "string"
+          },
+          "firewall_name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "artifact_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "validation": {
+            "$ref": "#/components/schemas/StoredValidation"
+          }
+        }
+      },
+      "VersionDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "firewall_id",
+          "number",
+          "author",
+          "created_at",
+          "description",
+          "profile",
+          "generator_version",
+          "firewall_name",
+          "revision",
+          "sha256",
+          "artifact_bytes",
+          "validation",
+          "snapshot"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "firewall_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "author": {
+            "$ref": "#/components/schemas/HistoryAuthor"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "R81.10",
+              "R82.10"
+            ]
+          },
+          "generator_version": {
+            "type": "string"
+          },
+          "firewall_name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "artifact_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "validation": {
+            "$ref": "#/components/schemas/StoredValidation"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/PublishedSnapshot"
+          }
+        }
+      },
+      "VersionPage": {
+        "type": "object",
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Version"
+            }
+          }
+        }
+      },
+      "SemanticChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "object_type",
+          "object_id",
+          "field",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "added",
+              "removed",
+              "changed"
+            ]
+          },
+          "object_type": {
+            "type": "string",
+            "enum": [
+              "firewall",
+              "settings",
+              "subnet",
+              "pool",
+              "reservation"
+            ]
+          },
+          "object_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "field": {
+            "type": "string",
+            "nullable": true
+          },
+          "before": {
+            "nullable": true
+          },
+          "after": {
+            "nullable": true
+          }
+        }
+      },
+      "VersionDiff": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "baseline_reason",
+          "manual_deployment",
+          "text",
+          "semantic"
+        ],
+        "properties": {
+          "from": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Version"
+              }
+            ],
+            "nullable": true
+          },
+          "to": {
+            "$ref": "#/components/schemas/Version"
+          },
+          "baseline_reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "no_successful_deployment",
+              null
+            ]
+          },
+          "manual_deployment": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "semantic": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SemanticChange"
+            }
+          }
+        }
+      },
+      "DeploymentCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version_id",
+          "status",
+          "occurred_at"
+        ],
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "successful",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Explicit offset required. Future times allowed only for planned events."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "ticket": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "supplied_hash": {
+            "type": "string",
+            "pattern": "^([0-9a-fA-F]{64})?$"
+          }
+        }
+      },
+      "DeploymentCorrection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision",
+          "correction_reason"
+        ],
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "successful",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Explicit offset required. Future times allowed only for planned events."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "ticket": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "supplied_hash": {
+            "type": "string",
+            "pattern": "^([0-9a-fA-F]{64})?$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correction_reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "Deployment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version_id",
+          "status",
+          "occurred_at",
+          "note",
+          "ticket",
+          "supplied_hash",
+          "version_number",
+          "profile",
+          "operator",
+          "created_at",
+          "revision",
+          "confirmation",
+          "artifact_sha256",
+          "hash_comparison"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "successful",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Explicit offset required. Future times allowed only for planned events."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "ticket": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "supplied_hash": {
+            "type": "string",
+            "pattern": "^([0-9a-fA-F]{64})?$"
+          },
+          "version_number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "R81.10",
+              "R82.10"
+            ]
+          },
+          "operator": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "confirmation": {
+            "type": "string",
+            "enum": [
+              "manual"
+            ]
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "hash_comparison": {
+            "type": "string",
+            "enum": [
+              "not_supplied",
+              "match",
+              "mismatch"
+            ]
+          }
+        }
+      },
+      "LatestDeployment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deployment"
+        ],
+        "properties": {
+          "deployment": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Deployment"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "DeploymentPage": {
+        "type": "object",
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Deployment"
+            }
+          }
+        }
+      },
+      "AuditPage": {
+        "type": "object",
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          }
+        }
+      },
+      "AuditEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "actor",
+          "created_at",
+          "operation",
+          "object_type",
+          "object_id",
+          "request_id",
+          "revision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actor": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "object_type": {
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "AuditDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "actor",
+          "created_at",
+          "operation",
+          "object_type",
+          "object_id",
+          "request_id",
+          "revision",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actor": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "object_type": {
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "before": {
+            "nullable": true
+          },
+          "after": {
+            "nullable": true
+          }
+        }
+      },
+      "CSVPreview": {
+        "type": "object",
+        "required": [
+          "token",
+          "revision",
+          "counts",
+          "changes"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Signed preview bound to account, firewall and revision; expires after 600 seconds."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "create",
+              "update",
+              "delete",
+              "unchanged"
+            ],
+            "properties": {
+              "create": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "update": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delete": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unchanged": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "row",
+                "operation",
+                "before",
+                "after"
+              ],
+              "properties": {
+                "row": {
+                  "type": "integer"
+                },
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "create",
+                    "update",
+                    "delete"
+                  ]
+                },
+                "before": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "subnet_cidr": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "active": {
+                      "oneOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "",
+                            "true",
+                            "false"
+                          ]
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "start": {
+                      "type": "string"
+                    },
+                    "end": {
+                      "type": "string"
+                    },
+                    "interface": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "after": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "subnet_cidr": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "active": {
+                      "oneOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "",
+                            "true",
+                            "false"
+                          ]
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "start": {
+                      "type": "string"
+                    },
+                    "end": {
+                      "type": "string"
+                    },
+                    "interface": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "firewall",
+                    "settings",
+                    "subnet",
+                    "pool",
+                    "reservation"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      }
+    }
+  }
+}

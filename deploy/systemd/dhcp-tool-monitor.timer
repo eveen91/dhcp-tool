@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic Gaia DHCP operational checks
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=dhcp-tool-monitor.service
+
+[Install]
+WantedBy=timers.target

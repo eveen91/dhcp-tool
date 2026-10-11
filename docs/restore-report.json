@@ -1,0 +1,7 @@
+{
+  "event": "actual_export_restore_verified",
+  "tables": 21,
+  "rows": 104,
+  "all_table_fingerprints_equal": true,
+  "database_removed_after_test": true
+}

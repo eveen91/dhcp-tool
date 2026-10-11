@@ -1,0 +1,34 @@
+[Unit]
+Description=Gaia DHCP tool web panel (Next.js)
+After=network.target dhcp-tool-api.service
+
+[Service]
+Type=exec
+User=dhcp-web
+Group=dhcp-web
+WorkingDirectory=/opt/dhcp-tool/current/frontend
+EnvironmentFile=/etc/dhcp-tool/frontend.env
+Environment=NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 13000
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/opt/dhcp-tool/current/frontend/.next-install/cache
+MemoryMax=1G
+TasksMax=128
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

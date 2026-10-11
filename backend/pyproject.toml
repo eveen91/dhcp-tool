@@ -1,0 +1,30 @@
+[project]
+name = "gaia-dhcp-tool-backend"
+version = "0.1.0"
+description = "DHCPv4 configuration management for Check Point Gaia"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "Django>=5.2,<5.3",
+  "djangorestframework>=3.17.2,<3.18",
+  "psycopg[binary]>=3.2,<4",
+  "gunicorn>=23,<24",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<10",
+  "pytest-django>=4.10,<5",
+  "ruff>=0.13,<1",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--reuse-db"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

@@ -1,0 +1,12 @@
+.next
+node_modules
+package-lock.json
+next-env.d.ts
+src/lib/api/schema.d.ts
+playwright-report
+test-results
+
+.next-e2e
+.next-quality
+
+.next-install/

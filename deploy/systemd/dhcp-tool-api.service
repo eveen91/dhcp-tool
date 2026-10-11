@@ -1,0 +1,34 @@
+[Unit]
+Description=Gaia DHCP tool API (Gunicorn)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=exec
+User=dhcp-api
+Group=dhcp-api
+WorkingDirectory=/opt/dhcp-tool/current/backend
+EnvironmentFile=/etc/dhcp-tool/backend.env
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ExecStart=/opt/dhcp-tool/current/backend/.venv/bin/gunicorn --config /opt/dhcp-tool/current/deploy/gunicorn.conf.py config.wsgi:application
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=1G
+TasksMax=128
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

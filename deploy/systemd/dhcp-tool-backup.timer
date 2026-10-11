@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Gaia DHCP encrypted export (no automatic deletion)
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+RandomizedDelaySec=5min
+Unit=dhcp-tool-backup.service
+
+[Install]
+WantedBy=timers.target

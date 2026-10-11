@@ -1,0 +1,18 @@
+[Unit]
+Description=Check Gaia DHCP API, database, frontend, disk and export age
+After=dhcp-tool-api.service dhcp-tool-web.service
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/dhcp-tool/backend.env
+WorkingDirectory=/opt/dhcp-tool/current/backend
+ExecStart=/opt/dhcp-tool/current/backend/.venv/bin/python /opt/dhcp-tool/current/scripts/operations.py monitor --url http://127.0.0.1:18000/api/v1/health/ --frontend-url http://127.0.0.1:13000/ --backup-dir /var/backups/dhcp-tool
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+TimeoutStartSec=60
+StandardOutput=journal
+StandardError=journal

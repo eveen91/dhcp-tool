@@ -1,0 +1,45 @@
+{
+  "firewall": "fw-example",
+  "profile": "R81.10",
+  "subnets": [
+    {
+      "cidr": "192.0.2.0/24",
+      "gateway": "192.0.2.1",
+      "default_lease_time": 43200,
+      "max_lease_time": 86400,
+      "dns": [
+        "8.8.8.8"
+      ],
+      "gaia_host_name_fallback": true,
+      "pools": [
+        {
+          "start": "192.0.2.10",
+          "end": "192.0.2.120"
+        }
+      ],
+      "reservations": [
+        {
+          "id": "printer",
+          "mac": "02:00:00:00:00:01",
+          "ip": "192.0.2.200"
+        }
+      ]
+    },
+    {
+      "cidr": "198.51.100.0/24",
+      "reservations": [
+        {
+          "id": "server",
+          "mac": "02:00:00:00:00:02",
+          "ip": "198.51.100.20"
+        }
+      ],
+      "pools": [
+        {
+          "start": "198.51.100.100",
+          "end": "198.51.100.150"
+        }
+      ]
+    }
+  ]
+}

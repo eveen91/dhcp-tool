@@ -1,0 +1,20 @@
+[Unit]
+Description=Encrypted Gaia DHCP database and configuration export
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/dhcp-tool/current/backend
+EnvironmentFile=/etc/dhcp-tool/backend.env
+ExecStart=/opt/dhcp-tool/current/backend/.venv/bin/python /opt/dhcp-tool/current/scripts/operations.py export --config-dir /etc/dhcp-tool --output-dir /var/backups/dhcp-tool --key-file /etc/dhcp-tool-backup.key
+ExecStartPost=/usr/bin/python3 /opt/dhcp-tool/current/scripts/publish-backup.py --source /var/backups/dhcp-tool --destination /var/lib/dhcp-tool/backup-download --group dhcp-api
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/dhcp-tool /var/lib/dhcp-tool/backup-download
+TimeoutStartSec=10min
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,52 @@
+{
+  "python": "3.13.5",
+  "firewalls": 50,
+  "reservations": 5000,
+  "iterations": 5,
+  "measurements": {
+    "firewall_list": {
+      "median_ms": 4.64,
+      "max_ms": 6.32,
+      "queries_max": 6
+    },
+    "reservation_list": {
+      "median_ms": 9.24,
+      "max_ms": 14.26,
+      "queries_max": 7
+    },
+    "reservation_search": {
+      "median_ms": 17.35,
+      "max_ms": 23.6,
+      "queries_max": 7
+    },
+    "draft_snapshot": {
+      "median_ms": 96.34,
+      "max_ms": 138.64,
+      "queries_max": 11
+    },
+    "generator": {
+      "median_ms": 123.56,
+      "max_ms": 256.23,
+      "queries_max": 0
+    },
+    "version_diff": {
+      "median_ms": 74.96,
+      "max_ms": 123.94,
+      "queries_max": 4
+    },
+    "version_list": {
+      "median_ms": 14.91,
+      "max_ms": 16.75,
+      "queries_max": 7
+    }
+  },
+  "draft_response_bytes": 1285742,
+  "artifact_bytes": 445505,
+  "version_list_response_bytes": 899,
+  "reservation_queries_1_vs_100": [
+    7,
+    7
+  ],
+  "search_plan": "Nested Loop  (cost=4.44..22.62 rows=1 width=785) (actual time=2.000..2.004 rows=1 loops=1)\n  Buffers: shared hit=74\n  ->  Index Scan using dhcp_tool_subnet_firewall_id_f943cf2b on dhcp_tool_subnet  (cost=0.14..8.16 rows=1 width=16) (actual time=0.012..0.014 rows=1 loops=1)\n        Index Cond: (firewall_id = '15a7346e-ec1a-4fed-a9cd-91fc4115916b'::uuid)\n        Buffers: shared hit=2\n  ->  Bitmap Heap Scan on dhcp_tool_reservation  (cost=4.30..14.45 rows=1 width=785) (actual time=1.986..1.986 rows=1 loops=1)\n        Recheck Cond: (subnet_id = dhcp_tool_subnet.id)\n        Filter: (upper((name)::text) ~~ '%HOST-04999%'::text)\n        Rows Removed by Filter: 4999\n        Heap Blocks: exact=67\n        Buffers: shared hit=72\n        ->  Bitmap Index Scan on dhcp_tool_reservation_subnet_id_8af311d3  (cost=0.00..4.30 rows=3 width=0) (actual time=0.079..0.079 rows=5000 loops=1)\n              Index Cond: (subnet_id = dhcp_tool_subnet.id)\n              Buffers: shared hit=5\nPlanning Time: 0.155 ms\nExecution Time: 2.023 ms",
+  "postgresql": "17.11 (Debian 17.11-0+deb13u1)"
+}
